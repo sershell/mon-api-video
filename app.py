@@ -3,48 +3,56 @@ from flask_cors import CORS
 import yt_dlp
 
 app = Flask(__name__)
-# Ceci permet à ton site InfinityFree de parler à ce serveur Render
-CORS(app) 
+CORS(app)
 
 @app.route('/')
 def home():
-    return "L'API Downloader est en ligne et fonctionnelle ! V7"
+    return "API Downloader V9 (Anti-Bot Edition) is running!"
 
-@app.route('/api/process', methods=['POST'])
-def process_video():
+@app.route('/get-link', methods=['POST'])
+def get_link():
+    # Gestion JSON ou Form Data
+    if request.is_json:
+        data = request.get_json()
+        url = data.get('url')
+    else:
+        url = request.form.get('url')
+
+    if not url:
+        return jsonify({'error': 'Pas d\'URL fournie'}), 400
+
+    # OPTIONS ANTI-BOT PUISSANTES
+    ydl_opts = {
+        'format': 'best',
+        'quiet': True,
+        'no_warnings': True,
+        'noplaylist': True,
+        # C'est ici que la magie opère :
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'ios'], # On se fait passer pour un mobile
+                'player_skip': ['webpage', 'configs', 'js'], # On saute les étapes inutiles qui déclenchent les bots
+            }
+        },
+        # Forcer l'IPv4 car l'IPv6 de Render est souvent bloquée par YT
+        'source_address': '0.0.0.0', 
+    }
+    
     try:
-        # Récupérer les données envoyées par ton site
-        content = request.json
-        url = content.get('url')
-        mode = content.get('mode', 'auto')
-
-        if not url:
-            return jsonify({'status': 'error', 'text': 'URL manquante'}), 400
-
-        # Configuration de yt-dlp pour ne pas télécharger mais juste extraire le lien
-        ydl_opts = {
-            'format': 'bestaudio/best' if mode == 'audio' else 'best',
-            'quiet': True,
-            'no_warnings': True,
-            'noplaylist': True,
-        }
-
-        # Extraction des infos
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # On extrait les infos sans télécharger
             info = ydl.extract_info(url, download=False)
-            
-            # Récupération du lien direct
-            download_url = info.get('url')
-            title = info.get('title', 'Vidéo sans titre')
             
             return jsonify({
                 'status': 'success',
-                'url': download_url,
-                'title': title,
-                'server': 'Render-Python'
+                'title': info.get('title', 'Vidéo'),
+                'url': info.get('url'), # Le lien direct vidéo
+                'thumbnail': info.get('thumbnail'),
+                'server': 'Render-Bypass'
             })
 
     except Exception as e:
+        # On renvoie l'erreur exacte pour debug
         return jsonify({'status': 'error', 'text': str(e)}), 500
 
 if __name__ == '__main__':

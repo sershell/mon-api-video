@@ -1,4 +1,3 @@
-flask
-flask-cors
-yt-dlp
-gunicorn
+PyQt5==5.15.10
+yt-dlp==2024.11.11
+certifi==2024.8.30
